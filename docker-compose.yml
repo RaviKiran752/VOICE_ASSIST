@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - STT_SERVICE_URL=stt_service:50051
+      - NLP_SERVICE_URL=nlp_service:50052
+      - TTS_SERVICE_URL=tts_service:50053
+    depends_on:
+      - stt_service
+      - nlp_service
+      - tts_service
+
+  stt_service:
+    build:
+      context: ./stt_service
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./stt_service:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  nlp_service:
+    build:
+      context: ./nlp_service
+      dockerfile: Dockerfile
+    ports:
+      - "50052:50052"
+    volumes:
+      - ./nlp_service:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  tts_service:
+    build:
+      context: ./tts_service
+      dockerfile: Dockerfile
+    ports:
+      - "50053:50053"
+    volumes:
+      - ./tts_service:/app
+    environment:
+      - PYTHONUNBUFFERED=1 

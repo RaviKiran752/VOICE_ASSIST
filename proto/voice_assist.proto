@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package voice_assist;
+
+option go_package = "github.com/yourusername/voice_assist/proto";
+
+// Speech-to-Text Service
+service STTService {
+  rpc TranscribeAudio (TranscribeRequest) returns (TranscribeResponse) {}
+}
+
+message TranscribeRequest {
+  bytes audio_data = 1;
+  string audio_format = 2;
+}
+
+message TranscribeResponse {
+  string text = 1;
+  float confidence = 2;
+}
+
+// Natural Language Processing Service
+service NLPService {
+  rpc ProcessText (ProcessTextRequest) returns (ProcessTextResponse) {}
+}
+
+message ProcessTextRequest {
+  string text = 1;
+}
+
+message ProcessTextResponse {
+  string intent = 1;
+  map<string, string> entities = 2;
+  float confidence = 3;
+}
+
+// Text-to-Speech Service
+service TTSService {
+  rpc SynthesizeSpeech (SynthesizeRequest) returns (SynthesizeResponse) {}
+}
+
+message SynthesizeRequest {
+  string text = 1;
+  string voice_id = 2;
+}
+
+message SynthesizeResponse {
+  bytes audio_data = 1;
+  string audio_format = 2;
+} 
