@@ -13,6 +13,8 @@ def generate_proto():
         f'--proto_path={proto_dir}',
         f'--python_out={output_dir}',
         f'--grpc_python_out={output_dir}',
+        f'--python_opt=import_style=package',
+        f'--grpc_python_opt=import_style=package',
         proto_file
     ])
 

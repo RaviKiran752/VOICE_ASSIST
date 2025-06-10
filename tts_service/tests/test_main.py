@@ -1,11 +1,8 @@
 import pytest
-import os
-import sys
 from fastapi.testclient import TestClient
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
+import io
+import soundfile as sf
+import numpy as np
 from src.main import app
 
 client = TestClient(app)
@@ -13,9 +10,31 @@ client = TestClient(app)
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
-    assert "status" in response.json()
+    data = response.json()
+    assert "status" in data
+    assert data["status"] == "healthy"
+    assert "cache_stats" in data
 
-def test_metrics_endpoint():
-    response = client.get("/metrics")
+def test_tts_endpoint():
+    # Create a test audio file
+    sample_rate = 22050
+    duration = 1.0  # seconds
+    t = np.linspace(0, duration, int(sample_rate * duration))
+    audio_data = np.sin(2 * np.pi * 440 * t)  # 440 Hz sine wave
+    
+    # Save to a buffer
+    buffer = io.BytesIO()
+    sf.write(buffer, audio_data, sample_rate, format='WAV')
+    buffer.seek(0)
+    
+    # Create form data
+    files = {
+        'audio': ('test.wav', buffer, 'audio/wav')
+    }
+    data = {
+        'text': 'Hello, this is a test.'
+    }
+    
+    response = client.post("/tts", files=files, data=data)
     assert response.status_code == 200
-    assert "tts_requests_total" in response.text 
+    assert response.headers["content-type"] == "audio/wav" 
