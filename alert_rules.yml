@@ -1,0 +1,105 @@
+groups:
+  - name: tts_service
+    rules:
+      - alert: HighErrorRate
+        expr: rate(tts_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in TTS service"
+          description: "TTS service is experiencing a high error rate of {{ $value }} errors per second"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(tts_generation_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in TTS service"
+          description: "95th percentile of TTS generation time is {{ $value }} seconds"
+
+      - alert: LowCacheHitRate
+        expr: rate(tts_cache_hits_total[5m]) / rate(tts_requests_total[5m]) < 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate in TTS service"
+          description: "Cache hit rate is below 50% ({{ $value | humanizePercentage }})"
+
+      - alert: RedisConnectionDown
+        expr: redis_connection_status == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection is down"
+          description: "TTS service cannot connect to Redis"
+
+      - alert: HighRedisLatency
+        expr: histogram_quantile(0.95, rate(redis_operation_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis operation latency"
+          description: "95th percentile of Redis operations is taking {{ $value }} seconds"
+
+  - name: nlp_service
+    rules:
+      - alert: HighErrorRate
+        expr: rate(nlp_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in NLP service"
+          description: "NLP service is experiencing a high error rate of {{ $value }} errors per second"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(nlp_processing_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in NLP service"
+          description: "95th percentile of NLP processing time is {{ $value }} seconds"
+
+      - alert: LowConfidence
+        expr: histogram_quantile(0.5, rate(nlp_confidence_bucket[5m])) < 0.6
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low confidence in NLP service"
+          description: "Median confidence score is below 60% ({{ $value | humanizePercentage }})"
+
+      - alert: LowCacheHitRate
+        expr: rate(nlp_cache_hits_total[5m]) / rate(nlp_requests_total[5m]) < 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate in NLP service"
+          description: "Cache hit rate is below 50% ({{ $value | humanizePercentage }})"
+
+  - name: redis
+    rules:
+      - alert: RedisConnectionDown
+        expr: redis_connection_status == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection is down"
+          description: "Service cannot connect to Redis"
+
+      - alert: HighRedisLatency
+        expr: histogram_quantile(0.95, rate(redis_operation_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis operation latency"
+          description: "95th percentile of Redis operations is taking {{ $value }} seconds" 
