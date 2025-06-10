@@ -38,4 +38,4 @@ Thumbs.db
 # Project specific
 *.wav
 *.mp3
-*.log 
+*.log .env
