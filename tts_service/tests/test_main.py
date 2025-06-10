@@ -10,8 +10,10 @@ from unittest.mock import MagicMock, patch
 # Add the project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Mock Redis and TTS before importing app
-with patch('redis.ConnectionPool') as mock_pool, \
+# Mock proto modules before importing app
+with patch('voice_assist.proto.voice_assist_pb2') as mock_pb2, \
+     patch('voice_assist.proto.voice_assist_pb2_grpc') as mock_pb2_grpc, \
+     patch('redis.ConnectionPool') as mock_pool, \
      patch('redis.Redis') as mock_redis, \
      patch('TTS.api.TTS') as mock_tts:
     
@@ -30,6 +32,10 @@ with patch('redis.ConnectionPool') as mock_pool, \
     mock_tts_instance = MagicMock()
     mock_tts_instance.tts_to_file.return_value = None
     mock_tts.return_value = mock_tts_instance
+    
+    # Setup proto mocks
+    mock_pb2.SynthesizeResponse = MagicMock
+    mock_pb2_grpc.TTSServiceServicer = MagicMock
     
     from tts_service.src.main import app
 
