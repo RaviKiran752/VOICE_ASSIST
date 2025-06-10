@@ -27,6 +27,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install grpcio-tools
         pip install pytest pytest-asyncio httpx
+        python generate_proto.py
         pip install -e .
         cd tts_service
         pip install -r requirements.txt
