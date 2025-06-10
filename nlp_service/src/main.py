@@ -1,7 +1,7 @@
 import grpc
 from concurrent import futures
 import spacy
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
 import torch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,21 +24,21 @@ app.add_middleware(
 nlp = spacy.load("en_core_web_sm")
 
 # Load intent classification model
-# Using DistilBERT for faster inference
-model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+# Using a more sophisticated model for better intent understanding
+model_name = "facebook/bart-large-mnli"  # Using BART for zero-shot classification
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-# Define intent categories
-INTENTS = {
-    "greeting": ["hello", "hi", "hey", "greetings"],
-    "farewell": ["bye", "goodbye", "see you", "farewell"],
-    "weather": ["weather", "temperature", "forecast", "rain", "sunny"],
-    "time": ["time", "clock", "hour", "schedule"],
-    "date": ["date", "day", "calendar", "month"],
-    "general_question": ["what", "how", "why", "when", "where", "who"],
-    "command": ["play", "stop", "pause", "resume", "next", "previous"],
-    "unknown": []
+# Define intent categories with descriptions for zero-shot classification
+INTENT_TEMPLATES = {
+    "greeting": "This is a greeting or salutation",
+    "farewell": "This is a goodbye or farewell message",
+    "weather": "This is a question about weather or temperature",
+    "time": "This is a question about current time or schedule",
+    "date": "This is a question about date or calendar",
+    "general_question": "This is a general question seeking information",
+    "command": "This is a command or instruction to perform an action",
+    "unknown": "This is an unknown or unclear intent"
 }
 
 class NLPServicer(voice_assist_pb2_grpc.NLPServiceServicer):
@@ -52,26 +52,32 @@ class NLPServicer(voice_assist_pb2_grpc.NLPServiceServicer):
             for ent in doc.ents:
                 entities[ent.label_] = ent.text
 
-            # Classify intent
-            inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-            with torch.no_grad():
-                outputs = model(**inputs)
-                scores = torch.softmax(outputs.logits, dim=1)
-                confidence = float(scores[0][1])  # Using positive class confidence
+            # Zero-shot classification for intent
+            intent_scores = {}
+            for intent, template in INTENT_TEMPLATES.items():
+                # Prepare the input for zero-shot classification
+                inputs = tokenizer(
+                    text,
+                    template,
+                    return_tensors="pt",
+                    truncation=True,
+                    padding=True
+                )
+                
+                with torch.no_grad():
+                    outputs = model(**inputs)
+                    scores = torch.softmax(outputs.logits, dim=1)
+                    intent_scores[intent] = float(scores[0][1])  # Using entailment score
 
-            # Determine intent based on keywords and model confidence
-            intent = "unknown"
-            max_matches = 0
-            
-            for intent_name, keywords in INTENTS.items():
-                matches = sum(1 for keyword in keywords if keyword in text)
-                if matches > max_matches:
-                    max_matches = matches
-                    intent = intent_name
+            # Get the intent with highest confidence
+            intent = max(intent_scores.items(), key=lambda x: x[1])
+            confidence = intent[1]
+            intent = intent[0]
 
-            # If no keyword matches but model confidence is high, use model prediction
-            if max_matches == 0 and confidence > 0.7:
-                intent = "general_question"
+            # If confidence is too low, mark as unknown
+            if confidence < 0.5:
+                intent = "unknown"
+                confidence = 0.0
 
             return voice_assist_pb2.ProcessTextResponse(
                 intent=intent,
@@ -95,23 +101,31 @@ async def process_text(text: str):
         for ent in doc.ents:
             entities[ent.label_] = ent.text
 
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-        with torch.no_grad():
-            outputs = model(**inputs)
-            scores = torch.softmax(outputs.logits, dim=1)
-            confidence = float(scores[0][1])
+        # Zero-shot classification for intent
+        intent_scores = {}
+        for intent, template in INTENT_TEMPLATES.items():
+            inputs = tokenizer(
+                text,
+                template,
+                return_tensors="pt",
+                truncation=True,
+                padding=True
+            )
+            
+            with torch.no_grad():
+                outputs = model(**inputs)
+                scores = torch.softmax(outputs.logits, dim=1)
+                intent_scores[intent] = float(scores[0][1])
 
-        intent = "unknown"
-        max_matches = 0
-        
-        for intent_name, keywords in INTENTS.items():
-            matches = sum(1 for keyword in keywords if keyword in text.lower())
-            if matches > max_matches:
-                max_matches = matches
-                intent = intent_name
+        # Get the intent with highest confidence
+        intent = max(intent_scores.items(), key=lambda x: x[1])
+        confidence = intent[1]
+        intent = intent[0]
 
-        if max_matches == 0 and confidence > 0.7:
-            intent = "general_question"
+        # If confidence is too low, mark as unknown
+        if confidence < 0.5:
+            intent = "unknown"
+            confidence = 0.0
 
         return {
             "intent": intent,
