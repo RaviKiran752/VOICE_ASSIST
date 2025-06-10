@@ -12,8 +12,8 @@ import uvicorn
 import redis
 from redis.exceptions import RedisError
 from prometheus_client import Counter, Histogram, generate_latest, Gauge
-import proto.voice_assist_pb2 as voice_assist_pb2
-import proto.voice_assist_pb2_grpc as voice_assist_pb2_grpc
+import voice_assist.proto.voice_assist_pb2 as voice_assist_pb2
+import voice_assist.proto.voice_assist_pb2_grpc as voice_assist_pb2_grpc
 from contextlib import contextmanager
 import time
 
